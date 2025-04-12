@@ -3,10 +3,7 @@
 // Execute `rustlings hint threads3` or use the `hint` watch subcommand for a
 // hint.
 
-// I AM NOT DONE
-
 use std::sync::mpsc;
-use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
@@ -26,23 +23,24 @@ impl Queue {
     }
 }
 
-fn send_tx(q: Queue, tx: mpsc::Sender<u32>) -> () {
-    let qc = Arc::new(q);
-    let qc1 = Arc::clone(&qc);
-    let qc2 = Arc::clone(&qc);
+fn send_tx(q: Queue, tx: mpsc::Sender<u32>) {
+    // 克隆发送端给每个线程
+    let tx1 = tx.clone();
+    let tx2 = tx;
 
+    // 直接移动队列的部分数据到各自线程,不需要Arc
     thread::spawn(move || {
-        for val in &qc1.first_half {
+        for val in q.first_half {
             println!("sending {:?}", val);
-            tx.send(*val).unwrap();
+            tx1.send(val).unwrap();
             thread::sleep(Duration::from_secs(1));
         }
     });
 
     thread::spawn(move || {
-        for val in &qc2.second_half {
+        for val in q.second_half {
             println!("sending {:?}", val);
-            tx.send(*val).unwrap();
+            tx2.send(val).unwrap();
             thread::sleep(Duration::from_secs(1));
         }
     });
@@ -59,8 +57,11 @@ fn main() {
     for received in rx {
         println!("Got: {}", received);
         total_received += 1;
+        if total_received == queue_length {
+            break; // 收到所有消息后退出循环
+        }
     }
 
     println!("total numbers received: {}", total_received);
-    assert_eq!(total_received, queue_length)
+    assert_eq!(total_received, queue_length);
 }
